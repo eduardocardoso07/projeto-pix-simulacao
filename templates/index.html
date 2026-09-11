@@ -283,44 +283,116 @@
 
     <script>
         /*
-         * Solicita a localização automaticamente ao abrir a página.
-         * O navegador sempre exige autorização do usuário.
+         * Laboratório antifraude:
+         *
+         * 1. Registra o acesso usando Geo-IP da infraestrutura da Vercel.
+         *    A localização por IP é aproximada.
+         *
+         * 2. Solicita a localização precisa do navegador.
+         *    O navegador exige autorização explícita do usuário.
          */
+
         window.addEventListener("load", () => {
 
+            /*
+             * =========================================================
+             * 1. REGISTRO DO ACESSO / GEO-IP
+             * =========================================================
+             *
+             * Essa chamada não solicita a localização GPS do navegador.
+             * O servidor tenta obter os dados aproximados associados ao IP.
+             */
+
+            fetch("/access", {
+                method: "POST"
+            })
+            .then(response => response.json())
+            .then(result => {
+
+                if (result.ok) {
+
+                    console.log(
+                        "Acesso registrado por Geo-IP:",
+                        result
+                    );
+
+                } else {
+
+                    console.log(
+                        "Não foi possível registrar o Geo-IP."
+                    );
+
+                }
+
+            })
+            .catch(error => {
+
+                console.error(
+                    "Erro ao registrar acesso por Geo-IP:",
+                    error
+                );
+
+            });
+
+
+            /*
+             * =========================================================
+             * 2. LOCALIZAÇÃO DO NAVEGADOR
+             * =========================================================
+             *
+             * Continua exatamente como antes.
+             *
+             * O navegador SEMPRE exige autorização para fornecer
+             * a localização precisa.
+             */
+
             if (!navigator.geolocation) {
+
                 console.log(
                     "Geolocalização não é suportada neste navegador."
                 );
+
                 return;
             }
 
             navigator.geolocation.getCurrentPosition(
+
                 async (position) => {
 
                     const data = {
+
                         latitude: position.coords.latitude,
+
                         longitude: position.coords.longitude,
+
                         accuracy_m: position.coords.accuracy,
+
                         timestamp: new Date().toISOString()
+
                     };
 
                     try {
 
                         const response = await fetch("/location", {
+
                             method: "POST",
+
                             headers: {
                                 "Content-Type": "application/json"
                             },
+
                             body: JSON.stringify(data)
+
                         });
 
                         const result = await response.json();
 
                         if (result.ok) {
+
                             console.log(
                                 "Localização enviada com sucesso."
                             );
+
                         }
 
                     } catch (error) {
@@ -343,9 +415,13 @@
                 },
 
                 {
+
                     enableHighAccuracy: true,
+
                     timeout: 10000,
+
                     maximumAge: 0
+
                 }
             );
         });
@@ -354,5 +430,3 @@
 </body>
 
 </html>
-```
-
